@@ -1,3 +1,4 @@
+#include "Channel.h"
 #include "Epoll.h"
 #include "InetAddress.h"
 #include "Socket.h"
@@ -15,10 +16,6 @@
 #define MAX_EVENTS 1024
 #define READ_BUFFER 1024
 
-void setnonblocking(int fd) {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-}
-
 void handleReadEvent(int);
 
 int main() {
@@ -29,13 +26,14 @@ int main() {
 
   Epoll *ep = new Epoll();
   serv_sock->setnonblocking();
-  ep->addFd(serv_sock->getFd(), EPOLLIN | EPOLLET);
-
+  Channel *serv_channel = new Channel(ep, serv_sock->getFd());
+  serv_channel->enableReading();
   while (true) {
-    std::vector<epoll_event> events = ep->poll();
-    int nfds = events.size();
+    std::vector<Channel *> activeChannels = ep->poll();
+    int nfds = activeChannels.size();
     for (int i = 0; i < nfds; ++i) {
-      if (events[i].data.fd == serv_sock->getFd()) {
+      int channel_fd = activeChannels[i]->getFd();
+      if (channel_fd == serv_sock->getFd()) {
         // TODO: 会发生内存泄漏
         InetAddress *client_addr = new InetAddress();
         Socket *client_socket = new Socket(serv_sock->accept(client_addr));
@@ -44,9 +42,10 @@ int main() {
                inet_ntoa(client_addr->addr.sin_addr),
                ntohs(client_addr->addr.sin_port));
         client_socket->setnonblocking();
-        ep->addFd(client_socket->getFd(), EPOLLIN | EPOLLET);
-      } else if (events[i].events && EPOLLIN) {
-        handleReadEvent(events[i].data.fd);
+        Channel *client_channel = new Channel(ep, client_socket->getFd());
+        client_channel->enableReading();
+      } else if (activeChannels[i]->getRevents() & EPOLLIN) {
+        handleReadEvent(channel_fd);
       } else {
         printf("something else happened\n");
       }

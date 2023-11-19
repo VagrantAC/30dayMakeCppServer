@@ -12,6 +12,8 @@ set(SHARED_SOURCES
     src/Socket.cc
     src/util.h
     src/util.cc
+    src/Channel.h
+    src/Channel.cc
 )
 
 add_executable(server 
