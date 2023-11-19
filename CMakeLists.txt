@@ -3,9 +3,23 @@ project(30dayMakeCppServer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(server src/server.cc
-        src/util.h
-        src/util.cc)
-add_executable(client src/client.cc
-        src/util.h
-        src/util.cc)
+set(SHARED_SOURCES
+    src/Epoll.h
+    src/Epoll.cc
+    src/InetAddress.h
+    src/InetAddress.cc
+    src/Socket.h
+    src/Socket.cc
+    src/util.h
+    src/util.cc
+)
+
+add_executable(server 
+    src/server.cc
+    ${SHARED_SOURCES}
+)
+
+add_executable(client 
+    src/client.cc
+    ${SHARED_SOURCES}
+)

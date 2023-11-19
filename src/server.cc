@@ -1,3 +1,6 @@
+#include "Epoll.h"
+#include "InetAddress.h"
+#include "Socket.h"
 #include "util.h"
 #include <arpa/inet.h>
 #include <cstdio>
@@ -16,77 +19,63 @@ void setnonblocking(int fd) {
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
+void handleReadEvent(int);
+
 int main() {
-  int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  errif(socket_fd == -1, "socket create error");
+  Socket *serv_sock = new Socket();
+  InetAddress *serv_addr = new InetAddress("127.0.0.1", 9800);
+  serv_sock->bind(serv_addr);
+  serv_sock->listen();
 
-  struct sockaddr_in serv_addr {};
-  bzero(&serv_addr, sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  serv_addr.sin_port = htons(9800);
-
-  errif(bind(socket_fd, (sockaddr *)&serv_addr, sizeof(serv_addr)) == -1,
-        "socket bind error");
-  errif(listen(socket_fd, SOMAXCONN) == -1, "socket listen error");
-
-  int epoll_fd = epoll_create1(0);
-  errif(epoll_fd == -1, "epoll create error");
-
-  struct epoll_event events[MAX_EVENTS], ev;
-  bzero(&events, sizeof(events));
-  bzero(&ev, sizeof(ev));
-  ev.data.fd = socket_fd;
-  ev.events = EPOLLIN | EPOLLET;
-  setnonblocking(socket_fd);
-  epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_fd, &ev);
+  Epoll *ep = new Epoll();
+  serv_sock->setnonblocking();
+  ep->addFd(serv_sock->getFd(), EPOLLIN | EPOLLET);
 
   while (true) {
-    int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-    errif(nfds == -1, "epoll wait error");
+    std::vector<epoll_event> events = ep->poll();
+    int nfds = events.size();
     for (int i = 0; i < nfds; ++i) {
-      if (events[i].data.fd == socket_fd) {
-        struct sockaddr_in client_addr;
-        bzero(&client_addr, sizeof(client_addr));
-        socklen_t client_addr_len = sizeof(client_addr);
+      if (events[i].data.fd == serv_sock->getFd()) {
+        // TODO: 会发生内存泄漏
+        InetAddress *client_addr = new InetAddress();
+        Socket *client_socket = new Socket(serv_sock->accept(client_addr));
 
-        int client_socket_fd =
-            accept(socket_fd, (sockaddr *)&client_addr, &client_addr_len);
-        errif(client_socket_fd == -1, "socket accept error");
-        printf("new client fd %d! IP: %s Port: %d\n", client_socket_fd,
-               inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-        bzero(&ev, sizeof(ev));
-        ev.data.fd = client_socket_fd;
-        ev.events = EPOLLIN | EPOLLET;
-        setnonblocking(client_socket_fd);
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket_fd, &ev);
+        printf("new client fd %d! IP: %s Port: %d\n", client_socket->getFd(),
+               inet_ntoa(client_addr->addr.sin_addr),
+               ntohs(client_addr->addr.sin_port));
+        client_socket->setnonblocking();
+        ep->addFd(client_socket->getFd(), EPOLLIN | EPOLLET);
       } else if (events[i].events && EPOLLIN) {
-        char buf[READ_BUFFER];
-        while (true) {
-          bzero(&buf, sizeof(buf));
-          ssize_t bytes_read = read(events[i].data.fd, buf, sizeof(buf));
-          if (bytes_read > 0) {
-            printf("message from client fd %d: %s\n", events[i].data.fd, buf);
-            write(events[i].data.fd, buf, sizeof(buf));
-          } else if (bytes_read == -1 && errno == EINTR) {
-            printf("continue reading");
-            continue;
-          } else if (bytes_read == -1 &&
-                     ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-            printf("client fd %d disconnected\n", events[i].data.fd);
-            break;
-          } else if (bytes_read == 0) {
-            printf("EOF, client fd %d disconnected\n", events[i].data.fd);
-            close(events[i].data.fd);
-            break;
-          }
-        }
+        handleReadEvent(events[i].data.fd);
       } else {
         printf("something else happened\n");
       }
     }
   }
-  close(socket_fd);
+  delete serv_sock;
+  delete serv_addr;
   return 0;
+}
+
+void handleReadEvent(int socket_fd) {
+  char buf[READ_BUFFER];
+  while (true) {
+    bzero(&buf, sizeof(buf));
+    ssize_t bytes_read = read(socket_fd, buf, sizeof(buf));
+    if (bytes_read > 0) {
+      printf("message from client fd %d: %s\n", socket_fd, buf);
+      write(socket_fd, buf, sizeof(buf));
+    } else if (bytes_read == -1 && errno == EINTR) {
+      printf("continue reading");
+      continue;
+    } else if (bytes_read == -1 &&
+               ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+      printf("finish reading once, errno: %d\n", errno);
+      break;
+    } else if (bytes_read == 0) {
+      printf("EOF, client fd %d disconnected\n", socket_fd);
+      close(socket_fd);
+      break;
+    }
+  }
 }
