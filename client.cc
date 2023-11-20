@@ -1,4 +1,6 @@
-#include "util.h"
+#include "src/InetAddress.h"
+#include "src/Socket.h"
+#include "src/util.h"
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
@@ -6,19 +8,12 @@
 #include <unistd.h>
 
 int main() {
-  int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  errif(socket_fd == -1, "socket create error");
-
-  struct sockaddr_in serv_addr {};
-  bzero(&serv_addr, sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  serv_addr.sin_port = htons(9800);
-
-  errif(connect(socket_fd, (sockaddr *)&serv_addr, sizeof(serv_addr)) == -1,
-        "socket connect error");
+  Socket *cli_sock = new Socket();
+  InetAddress *cli_addr = new InetAddress("127.0.0.1", 9800);
+  cli_sock->connect(cli_addr);
 
   while (true) {
+    int socket_fd = cli_sock->getFd();
     char buf[1024];
     bzero(&buf, sizeof(buf));
     scanf("%s", buf);
@@ -39,6 +34,7 @@ int main() {
       errif(true, "socket read error");
     }
   }
-  close(socket_fd);
+  delete cli_sock;
+  delete cli_addr;
   return 0;
 }

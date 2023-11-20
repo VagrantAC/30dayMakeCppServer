@@ -14,14 +14,18 @@ set(SHARED_SOURCES
     src/util.cc
     src/Channel.h
     src/Channel.cc
+    src/EventLoop.h
+    src/EventLoop.cc
+    src/Server.h
+    src/Server.cc
 )
 
 add_executable(server 
-    src/server.cc
+    server.cc
     ${SHARED_SOURCES}
 )
 
 add_executable(client 
-    src/client.cc
+    client.cc
     ${SHARED_SOURCES}
 )

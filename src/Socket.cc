@@ -32,6 +32,11 @@ void Socket::setnonblocking() {
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
+void Socket::connect(InetAddress *addr) {
+  errif(::connect(fd, (sockaddr *)&addr->addr, addr->addr_len) == -1,
+        "socket connect error");
+}
+
 int Socket::accept(InetAddress *addr) {
   int client_socket_fd = ::accept(fd, (sockaddr *)&addr->addr, &addr->addr_len);
   errif(client_socket_fd == -1, "socket accept error");
