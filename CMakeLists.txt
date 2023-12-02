@@ -18,6 +18,8 @@ set(SHARED_SOURCES
     src/EventLoop.cc
     src/Server.h
     src/Server.cc
+    src/Acceptor.h
+    src/Acceptor.cc
 )
 
 add_executable(server 
