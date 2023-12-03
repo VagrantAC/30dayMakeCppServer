@@ -24,6 +24,8 @@ set(SHARED_SOURCES
     src/Connection.cc
     src/Buffer.h
     src/Buffer.cc
+    src/ThreadPool.h
+    src/ThreadPool.cc
 )
 
 add_executable(server 
@@ -31,7 +33,11 @@ add_executable(server
     ${SHARED_SOURCES}
 )
 
+target_link_libraries(server pthread)
+
 add_executable(client 
     client.cc
     ${SHARED_SOURCES}
 )
+
+target_link_libraries(client pthread)
