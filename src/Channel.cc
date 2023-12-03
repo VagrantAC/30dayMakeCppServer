@@ -9,7 +9,7 @@ Channel::~Channel() {}
 void Channel::handleEvent() { callback(); }
 
 void Channel::enableReading() {
-  events = EPOLLIN | EPOLLET;
+  events |= EPOLLIN | EPOLLET;
   loop->updateChannel(this);
 }
 

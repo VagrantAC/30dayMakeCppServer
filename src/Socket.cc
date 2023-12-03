@@ -19,9 +19,11 @@ Socket::~Socket() {
   }
 }
 
-void Socket::bind(InetAddress *addr) {
-  errif(::bind(fd, (sockaddr *)&addr->addr, addr->addr_len) == -1,
-        "socket bind error");
+void Socket::bind(InetAddress *_addr) {
+  struct sockaddr_in addr = _addr->getAddr();
+  socklen_t addr_len = _addr->getAddr_len();
+  errif(::bind(fd, (sockaddr *)&addr, addr_len) == -1, "socket bind error");
+  _addr->setInetAddr(addr, addr_len);
 }
 
 void Socket::listen() {
@@ -32,14 +34,20 @@ void Socket::setnonblocking() {
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
-void Socket::connect(InetAddress *addr) {
-  errif(::connect(fd, (sockaddr *)&addr->addr, addr->addr_len) == -1,
+void Socket::connect(InetAddress *_addr) {
+  struct sockaddr_in addr = _addr->getAddr();
+  socklen_t addr_len = _addr->getAddr_len();
+  errif(::connect(fd, (sockaddr *)&addr, addr_len) == -1,
         "socket connect error");
+  _addr->setInetAddr(addr, addr_len);
 }
 
-int Socket::accept(InetAddress *addr) {
-  int client_socket_fd = ::accept(fd, (sockaddr *)&addr->addr, &addr->addr_len);
+int Socket::accept(InetAddress *_addr) {
+  struct sockaddr_in addr = _addr->getAddr();
+  socklen_t addr_len = _addr->getAddr_len();
+  int client_socket_fd = ::accept(fd, (sockaddr *)&addr, &addr_len);
   errif(client_socket_fd == -1, "socket accept error");
+  _addr->setInetAddr(addr, addr_len);
   return client_socket_fd;
 }
 

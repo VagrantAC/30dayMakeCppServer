@@ -22,14 +22,14 @@ Epoll::~Epoll() {
   delete[] events;
 }
 
-void Epoll::addFd(int socket_fd, uint32_t op) {
-  struct epoll_event event;
-  bzero(&event, sizeof(event));
-  event.data.fd = socket_fd;
-  event.events = op;
-  errif(epoll_ctl(fd, EPOLL_CTL_ADD, socket_fd, &event) == -1,
-        "epoll add event error");
-}
+// void Epoll::addFd(int socket_fd, uint32_t op) {
+//   struct epoll_event event;
+//   bzero(&event, sizeof(event));
+//   event.data.fd = socket_fd;
+//   event.events = op;
+//   errif(epoll_ctl(fd, EPOLL_CTL_ADD, socket_fd, &event) == -1,
+//         "epoll add event error");
+// }
 
 // std::vector<epoll_event> Epoll::poll(int timeout) {
 //   std::vector<epoll_event> activeEvents;
