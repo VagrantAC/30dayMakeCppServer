@@ -22,6 +22,8 @@ set(SHARED_SOURCES
     src/Acceptor.cc
     src/Connection.h
     src/Connection.cc
+    src/Buffer.h
+    src/Buffer.cc
 )
 
 add_executable(server 
