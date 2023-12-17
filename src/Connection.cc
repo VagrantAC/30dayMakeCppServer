@@ -1,70 +1,68 @@
-#include "Connection.h"
-#include "Buffer.h"
-#include "Channel.h"
-#include "Socket.h"
-#include "util.h"
-#include <string.h>
+#include "include/Connection.h"
+
 #include <unistd.h>
+#include <cstring>
+#include "include/Buffer.h"
+#include "include/Channel.h"
+#include "include/Socket.h"
+#include "include/util.h"
 
 #define READ_BUFFER 1024
 
-Connection::Connection(EventLoop *_loop, Socket *_sock)
-    : loop(_loop), sock(_sock), channel(nullptr), inBuffer(new std::string()),
-      readBuffer(nullptr) {
-  channel = new Channel(loop, sock->getFd());
-  channel->enableRead();
-  channel->useET();
-  std::function<void()> cb = std::bind(&Connection::echo, this, sock->getFd());
-  channel->setReadCallback(cb);
-  readBuffer = new Buffer();
+Connection::Connection(EventLoop *loop, Socket *sock)
+    : loop_(loop), sock_(sock), channel_(nullptr), read_buffer_(nullptr) {
+  channel_ = new Channel(loop_, sock_->GetFd());
+  channel_->EnableRead();
+  channel_->UseET();
+  std::function<void()> cb = std::bind(&Connection::Echo, this, sock_->GetFd());
+  channel_->SetReadCallback(cb);
+  read_buffer_ = new Buffer();
 }
 
 Connection::~Connection() {
-  delete channel;
-  delete sock;
-  delete readBuffer;
+  delete channel_;
+  delete sock_;
+  delete read_buffer_;
 }
 
-void Connection::setDeleteConnectionCallback(std::function<void(int)> _cb) {
-  deleteConnectionCallback = _cb;
+void Connection::SetDeleteConnectionCallback(std::function<void(int)> const &callback) {
+  delete_connection_callback_ = callback;
 }
 
-void Connection::echo(int socket_fd) {
+void Connection::Echo(int sockfd) {
   char buf[READ_BUFFER];
   while (true) {
-    bzero(&buf, sizeof(buf));
-    ssize_t bytes_read = read(socket_fd, buf, sizeof(buf));
+    memset(&buf, 0, sizeof(buf));
+    ssize_t bytes_read = read(sockfd, buf, sizeof(buf));
     if (bytes_read > 0) {
-      readBuffer->append(buf, bytes_read);
+      read_buffer_->Append(buf, bytes_read);
     } else if (bytes_read == -1 && errno == EINTR) {
       printf("continue reading");
       continue;
-    } else if (bytes_read == -1 &&
-               ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-      printf("message from client fd %d: %s\n", socket_fd, readBuffer->c_str());
-      send(socket_fd);
-      readBuffer->clear();
+    } else if (bytes_read == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+      printf("message from client fd %d: %s\n", sockfd, read_buffer_->ToStr());
+      Send(sockfd);
+      read_buffer_->Clear();
       break;
     } else if (bytes_read == 0) {
-      printf("EOF, client fd %d disconnected\n", socket_fd);
-      deleteConnectionCallback(socket_fd);
+      printf("EOF, client fd %d disconnected\n", sockfd);
+      delete_connection_callback_(sockfd);
       break;
     } else {
       printf("Connection reset by peer\n");
-      deleteConnectionCallback(socket_fd);
+      delete_connection_callback_(sockfd);
       break;
     }
   }
 }
 
-void Connection::send(int socket_fd) {
-  char buf[readBuffer->size()];
-  strcpy(buf, readBuffer->c_str());
-  int data_size = readBuffer->size();
+void Connection::Send(int sockfd) {
+  char buf[read_buffer_->Size()];
+  strcpy(buf, read_buffer_->ToStr());
+  int data_size = read_buffer_->Size();
   int data_left = data_size;
   while (data_left > 0) {
-    ssize_t bytes_write =
-        write(socket_fd, buf + data_size - data_left, data_left);
+    ssize_t bytes_write = write(sockfd, buf + data_size - data_left, data_left);
     if (bytes_write == -1 && errno == EAGAIN) {
       break;
     }

@@ -1,50 +1,78 @@
-#include "Socket.h"
-#include "InetAddress.h"
-#include "util.h"
+#include "include/Socket.h"
+
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cerrno>
+#include <cstring>
+#include "include/util.h"
 
-Socket::Socket() : fd(-1) {
-  fd = socket(AF_INET, SOCK_STREAM, 0);
-  errif(fd == -1, "socket create error");
+Socket::Socket() {
+  fd_ = socket(AF_INET, SOCK_STREAM, 0);
+  ErrorIf(fd_ == -1, "socket create error");
 }
 
-Socket::Socket(int _fd) : fd(_fd) { errif(fd == -1, "socket create error"); }
+Socket::Socket(int fd) : fd_(fd) { ErrorIf(fd_ == -1, "socket create error"); }
 
 Socket::~Socket() {
-  if (fd != -1) {
-    close(fd);
-    fd = -1;
+  if (fd_ != -1) {
+    close(fd_);
+    fd_ = -1;
   }
 }
 
-void Socket::bind(InetAddress *_addr) {
-  struct sockaddr_in addr = _addr->getAddr();
-  errif(::bind(fd, (sockaddr *)&addr, sizeof(addr)) == -1, "socket bind error");
+void Socket::Bind(InetAddress *_addr) {
+  struct sockaddr_in tmp_addr = _addr->GetAddr();
+  ErrorIf(::bind(fd_, (sockaddr *)&tmp_addr, sizeof(tmp_addr)) == -1, "socket bind error");
 }
 
-void Socket::listen() {
-  errif(::listen(fd, SOMAXCONN) == -1, "socket listen error");
+void Socket::Listen() { ErrorIf(::listen(fd_, SOMAXCONN) == -1, "socket listen error"); }
+
+void Socket::Setnonblocking() { fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK); }
+
+void Socket::Connect(InetAddress *_addr) {
+  struct sockaddr_in addr = _addr->GetAddr();
+  ErrorIf(::connect(fd_, (sockaddr *)&addr, sizeof(addr)) == -1, "socket connect error");
 }
 
-void Socket::setnonblocking() {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+int Socket::Accept(InetAddress *addr) {
+  int clnt_sockfd = -1;
+  struct sockaddr_in tmp_addr {};
+  socklen_t addr_len = sizeof(tmp_addr);
+  if (fcntl(fd_, F_GETFL) & O_NONBLOCK) {
+    while (true) {
+      clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
+      if (clnt_sockfd == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+        continue;
+      }
+      if (clnt_sockfd == -1) {
+        ErrorIf(true, "socket accept error");
+      } else {
+        break;
+      }
+    }
+  } else {
+    clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
+    ErrorIf(clnt_sockfd == -1, "socket accept error");
+  }
+  addr->SetAddr(tmp_addr);
+  return clnt_sockfd;
 }
 
-void Socket::connect(InetAddress *_addr) {
-  struct sockaddr_in addr = _addr->getAddr();
-  errif(::connect(fd, (sockaddr *)&addr, sizeof(addr)) == -1,
-        "socket connect error");
+int Socket::GetFd() { return fd_; }
+
+InetAddress::InetAddress() = default;
+InetAddress::InetAddress(const char *ip, uint16_t port) {
+  memset(&addr_, 0, sizeof(addr_));
+  addr_.sin_family = AF_INET;
+  addr_.sin_addr.s_addr = inet_addr(ip);
+  addr_.sin_port = htons(port);
 }
 
-int Socket::accept(InetAddress *_addr) {
-  struct sockaddr_in addr = _addr->getAddr();
-  socklen_t addr_len = sizeof(_addr);
-  int client_socket_fd = ::accept(fd, (sockaddr *)&addr, &addr_len);
-  errif(client_socket_fd == -1, "socket accept error");
-  _addr->setInetAddr(addr);
-  return client_socket_fd;
-}
+void InetAddress::SetAddr(sockaddr_in addr) { addr_ = addr; }
 
-int Socket::getFd() { return fd; }
+sockaddr_in InetAddress::GetAddr() { return addr_; }
+
+const char *InetAddress::GetIp() { return inet_ntoa(addr_.sin_addr); }
+
+uint16_t InetAddress::GetPort() { return ntohs(addr_.sin_port); }

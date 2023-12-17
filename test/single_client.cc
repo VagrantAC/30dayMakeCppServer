@@ -1,22 +1,21 @@
-#include "src/InetAddress.h"
-#include "src/Socket.h"
-#include "src/util.h"
 #include <arpa/inet.h>
-#include <cstdio>
-#include <cstring>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cstdio>
+#include <cstring>
+#include "Socket.h"
+#include "util.h"
 
 int main() {
   Socket *cli_sock1 = new Socket();
   Socket *cli_sock2 = new Socket();
   InetAddress *cli_addr = new InetAddress("127.0.0.1", 9801);
-  cli_sock1->connect(cli_addr);
-  cli_sock2->connect(cli_addr);
+  cli_sock1->Connect(cli_addr);
+  cli_sock2->Connect(cli_addr);
 
   while (true) {
-    int socket_fd1 = cli_sock1->getFd();
-    int socket_fd2 = cli_sock2->getFd();
+    int socket_fd1 = cli_sock1->GetFd();
+    int socket_fd2 = cli_sock2->GetFd();
     char buf[1024];
     bzero(&buf, sizeof(buf));
     scanf("%s", buf);
@@ -39,7 +38,7 @@ int main() {
       break;
     } else if (read_bytes1 == -1) {
       close(socket_fd1);
-      errif(true, "socket1 read error");
+      ErrorIf(true, "socket1 read error");
     }
 
     ssize_t read_bytes2 = read(socket_fd2, buf, sizeof(buf));
@@ -50,7 +49,7 @@ int main() {
       break;
     } else if (read_bytes2 == -1) {
       close(socket_fd2);
-      errif(true, "socket2 read error");
+      ErrorIf(true, "socket2 read error");
     }
   }
   delete cli_sock1;

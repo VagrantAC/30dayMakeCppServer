@@ -1,10 +1,10 @@
-#include "util.h"
+#include "include/util.h"
 #include <cstdio>
 #include <cstdlib>
 
-void errif(bool condition, const char* errmsg) {
-    if (condition) {
-        perror(errmsg);
-        exit(EXIT_FAILURE);
-    }
+void ErrorIf(bool condition, const char *errmsg) {
+  if (condition) {
+    perror(errmsg);
+    exit(EXIT_FAILURE);
+  }
 }

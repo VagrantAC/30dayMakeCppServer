@@ -1,19 +1,18 @@
-#include "src/Buffer.h"
-#include "src/InetAddress.h"
-#include "src/Socket.h"
-#include "src/ThreadPool.h"
-#include "src/util.h"
-#include <iostream>
-#include <string.h>
-#include <string>
+#include <cstring>
 #include <unistd.h>
+#include <iostream>
+#include <string>
+#include "Buffer.h"
+#include "Socket.h"
+#include "ThreadPool.h"
+#include "util.h"
 
-void oneClient(int msgs, int wait) {
+void OneClient(int msgs, int wait) {
   Socket *socket = new Socket();
   InetAddress *addr = new InetAddress("127.0.0.1", 9801);
-  socket->connect(addr);
+  socket->Connect(addr);
 
-  int socketfd = socket->getFd();
+  int socketfd = socket->GetFd();
 
   Buffer *sendBuffer = new Buffer();
   Buffer *readBuffer = new Buffer();
@@ -21,9 +20,8 @@ void oneClient(int msgs, int wait) {
   sleep(wait);
   int count = 0;
   while (count < msgs) {
-    sendBuffer->setBuf("I'm client!");
-    ssize_t write_bytes =
-        write(socketfd, sendBuffer->c_str(), sendBuffer->size());
+    sendBuffer->SetBuf("I'm client!");
+    ssize_t write_bytes = write(socketfd, sendBuffer->ToStr(), sendBuffer->Size());
     if (write_bytes == -1) {
       printf("socket already disconnected, can't write any more!\n");
       break;
@@ -34,19 +32,18 @@ void oneClient(int msgs, int wait) {
       bzero(&buf, sizeof(buf));
       ssize_t read_bytes = read(socketfd, buf, sizeof(buf));
       if (read_bytes > 0) {
-        readBuffer->append(buf, read_bytes);
+        readBuffer->Append(buf, read_bytes);
         already_read += read_bytes;
       } else if (read_bytes == 0) {
         printf("server disconnected!\n");
         exit(EXIT_SUCCESS);
       }
-      if (already_read >= sendBuffer->size()) {
-        printf("count: %d, message from server: %s\n", count++,
-               readBuffer->c_str());
+      if (already_read >= sendBuffer->Size()) {
+        printf("count: %d, message from server: %s\n", count++, readBuffer->ToStr());
         break;
       }
     }
-    readBuffer->clear();
+    readBuffer->Clear();
   }
   delete addr;
   delete socket;
@@ -60,26 +57,26 @@ int main(int argc, char *argv[]) {
   const char *optstring = "t:m:w:";
   while ((o = getopt(argc, argv, optstring)) != -1) {
     switch (o) {
-    case 't':
-      threads = std::stoi(optarg);
-      break;
-    case 'm':
-      msgs = std::stoi(optarg);
-      break;
-    case 'w':
-      wait = std::stoi(optarg);
-      break;
-    case '?':
-      printf("error optopt: %c\n", optopt);
-      printf("error opterr: %d\n", opterr);
-      break;
+      case 't':
+        threads = std::stoi(optarg);
+        break;
+      case 'm':
+        msgs = std::stoi(optarg);
+        break;
+      case 'w':
+        wait = std::stoi(optarg);
+        break;
+      case '?':
+        printf("error optopt: %c\n", optopt);
+        printf("error opterr: %d\n", opterr);
+        break;
     }
   }
 
   ThreadPool *poll = new ThreadPool(threads);
-  std::function<void()> func = std::bind(oneClient, msgs, wait);
+  std::function<void()> func = std::bind(OneClient, msgs, wait);
   for (int i = 0; i < threads; ++i) {
-    poll->add(func);
+    poll->Add(func);
   }
   delete poll;
   return 0;

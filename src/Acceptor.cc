@@ -1,38 +1,35 @@
 #include "Acceptor.h"
 #include "Channel.h"
-#include "InetAddress.h"
 #include "Server.h"
 #include "Socket.h"
 
-Acceptor::Acceptor(EventLoop *_loop)
-    : loop(_loop), sock(nullptr), acceptChannel(nullptr) {
-  sock = new Socket();
+Acceptor::Acceptor(EventLoop *_loop) : loop_(_loop), sock_(nullptr), channel_(nullptr) {
+  sock_ = new Socket();
   InetAddress *addr = new InetAddress("127.0.0.1", 9801);
-  sock->bind(addr);
-  sock->listen();
-  acceptChannel = new Channel(loop, sock->getFd());
-  std::function<void()> cb = std::bind(&Acceptor::acceptConnection, this);
-  acceptChannel->setReadCallback(cb);
-  acceptChannel->enableRead();
+  sock_->Bind(addr);
+  sock_->Listen();
+  channel_ = new Channel(loop_, sock_->GetFd());
+  std::function<void()> cb = std::bind(&Acceptor::AcceptConnection, this);
+  channel_->SetReadCallback(cb);
+  channel_->EnableRead();
   delete addr;
 }
 
 Acceptor::~Acceptor() {
-  delete sock;
-  delete acceptChannel;
+  delete channel_;
+  delete sock_;
 }
 
-void Acceptor::acceptConnection() {
+void Acceptor::AcceptConnection() {
   InetAddress *client_addr = new InetAddress();
-  Socket *client_sock = new Socket(sock->accept(client_addr));
-  printf("new client fd %d! IP: %s Port: %d\n", client_sock->getFd(),
-         inet_ntoa(client_addr->getAddr().sin_addr),
-         ntohs(client_addr->getAddr().sin_port));
-  client_sock->setnonblocking();
-  newConnectionCallback(client_sock);
+  Socket *client_sock = new Socket(sock_->Accept(client_addr));
+  printf("new client fd %d! IP: %s Port: %d\n", client_sock->GetFd(), inet_ntoa(client_addr->GetAddr().sin_addr),
+         ntohs(client_addr->GetAddr().sin_port));
+  client_sock->Setnonblocking();
+  new_connection_callback_(client_sock);
   delete client_addr;
 }
 
-void Acceptor::setNewConnectionCallback(std::function<void(Socket *)> _cb) {
-  newConnectionCallback = _cb;
+void Acceptor::SetNewConnectionCallback(std::function<void(Socket *)> const &callback) {
+  new_connection_callback_ = callback;
 }
