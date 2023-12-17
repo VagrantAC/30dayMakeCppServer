@@ -7,7 +7,10 @@ EventLoop::EventLoop() : ep(nullptr), threadPool(nullptr), quit(false) {
   threadPool = new ThreadPool();
 }
 
-EventLoop::~EventLoop() { delete ep; }
+EventLoop::~EventLoop() {
+  delete threadPool;
+  delete ep;
+}
 
 void EventLoop::loop() {
   while (!quit) {
@@ -21,6 +24,4 @@ void EventLoop::loop() {
 
 void EventLoop::updateChannel(Channel *ch) { ep->updateChannel(ch); }
 
-void EventLoop::addThread(std::function<void ()> func) {
-  threadPool->add(func);
-}
+void EventLoop::addThread(std::function<void()> func) { threadPool->add(func); }

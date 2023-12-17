@@ -41,3 +41,10 @@ add_executable(client
 )
 
 target_link_libraries(client pthread)
+
+add_executable(test 
+    test.cc
+    ${SHARED_SOURCES}
+)
+
+target_link_libraries(test pthread)
