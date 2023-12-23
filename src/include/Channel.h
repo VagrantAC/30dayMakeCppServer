@@ -1,6 +1,7 @@
 #pragma once
-#include <functional>
 #include "Macros.h"
+
+#include <functional>
 
 class Socket;
 class EventLoop;

@@ -22,7 +22,7 @@ Server::Server(EventLoop *_loop) : main_reactor_(_loop), acceptor_(nullptr), thr
 
   for (int i = 0; i < size; ++i) {
     std::function<void()> sub_loop = std::bind(&EventLoop::Loop, sub_reactors_[i]);
-    thread_poll_->Add(sub_loop);
+    thread_poll_->Add(std::move(sub_loop));
   }
 }
 
@@ -33,18 +33,23 @@ Server::~Server() {
 
 void Server::NewConnection(Socket *sock) {
   ErrorIf(sock->GetFd() == -1, "new connection error");
-  int random = sock->GetFd() % int(sub_reactors_.size());
+  uint64_t random = sock->GetFd() % sub_reactors_.size();
   Connection *conn = new Connection(sub_reactors_[random], sock);
-  std::function<void(int)> cb = std::bind(&Server::DeleteConnection, this, std::placeholders::_1);
+  std::function<void(Socket *)> cb = std::bind(&Server::DeleteConnection, this, std::placeholders::_1);
   conn->SetDeleteConnectionCallback(cb);
+  conn->SetOnConnectCallback(on_connect_callback_);
   connections_[sock->GetFd()] = conn;
 }
 
-void Server::DeleteConnection(int sockfd) {
+void Server::DeleteConnection(Socket *sock) {
+  int sockfd = sock->GetFd();
   auto it = connections_.find(sockfd);
   if (it != connections_.end()) {
     Connection *conn = connections_[sockfd];
     connections_.erase(sockfd);
     delete conn;
+    conn = nullptr;
   }
 }
+
+void Server::OnConnect(std::function<void(Connection *)> fn) { on_connect_callback_ = std::move(fn); }

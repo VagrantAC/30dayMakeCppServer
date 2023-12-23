@@ -23,23 +23,46 @@ Socket::~Socket() {
 
 void Socket::Bind(InetAddress *_addr) {
   struct sockaddr_in tmp_addr = _addr->GetAddr();
-  ErrorIf(::bind(fd_, (sockaddr *)&tmp_addr, sizeof(tmp_addr)) == -1, "socket bind error");
+  ErrorIf(bind(fd_, (sockaddr *)&tmp_addr, sizeof(tmp_addr)) == -1, "socket bind error");
 }
 
-void Socket::Listen() { ErrorIf(::listen(fd_, SOMAXCONN) == -1, "socket listen error"); }
+void Socket::Listen() { ErrorIf(listen(fd_, SOMAXCONN) == -1, "socket listen error"); }
 
-void Socket::Setnonblocking() { fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK); }
+void Socket::SetNonblocking() { fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK); }
 
-void Socket::Connect(InetAddress *_addr) {
-  struct sockaddr_in addr = _addr->GetAddr();
-  ErrorIf(::connect(fd_, (sockaddr *)&addr, sizeof(addr)) == -1, "socket connect error");
+bool Socket::IsNonBlocking() { return (fcntl(fd_, F_GETFL) & O_NONBLOCK) != 0; }
+
+void Socket::Connect(InetAddress *addr) {
+  struct sockaddr_in tmp_addr = addr->GetAddr();
+  if (fcntl(fd_, F_GETFL) & O_NONBLOCK) {
+    while (true) {
+      int ret = connect(fd_, (sockaddr *)&tmp_addr, sizeof(tmp_addr));
+      if (ret == 0) {
+        break;
+      }
+      if (ret == -1 && (errno == EINPROGRESS)) {
+        continue;
+      }
+      if (ret == -1) {
+        ErrorIf(true, "socket connect error");
+      }
+    }
+  } else {
+    ErrorIf(::connect(fd_, (sockaddr *)&tmp_addr, sizeof(tmp_addr)) == -1, "socket connect error");
+  }
+}
+
+void Socket::Connect(const char *ip, uint16_t port) {
+  InetAddress *addr = new InetAddress(ip, port);
+  Connect(addr);
+  delete addr;
 }
 
 int Socket::Accept(InetAddress *addr) {
   int clnt_sockfd = -1;
   struct sockaddr_in tmp_addr {};
   socklen_t addr_len = sizeof(tmp_addr);
-  if (fcntl(fd_, F_GETFL) & O_NONBLOCK) {
+  if (IsNonBlocking()) {
     while (true) {
       clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
       if (clnt_sockfd == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {

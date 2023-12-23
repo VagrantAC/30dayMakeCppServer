@@ -1,7 +1,7 @@
-#include "Acceptor.h"
-#include "Channel.h"
-#include "Server.h"
-#include "Socket.h"
+#include "include/Acceptor.h"
+#include "include/Channel.h"
+#include "include/Server.h"
+#include "include/Socket.h"
 
 Acceptor::Acceptor(EventLoop *_loop) : loop_(_loop), sock_(nullptr), channel_(nullptr) {
   sock_ = new Socket();
@@ -25,7 +25,7 @@ void Acceptor::AcceptConnection() {
   Socket *client_sock = new Socket(sock_->Accept(client_addr));
   printf("new client fd %d! IP: %s Port: %d\n", client_sock->GetFd(), inet_ntoa(client_addr->GetAddr().sin_addr),
          ntohs(client_addr->GetAddr().sin_port));
-  client_sock->Setnonblocking();
+  client_sock->SetNonblocking();
   new_connection_callback_(client_sock);
   delete client_addr;
 }

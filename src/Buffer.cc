@@ -22,7 +22,7 @@ void Buffer::Getline() {
   std::getline(std::cin, buf_);
 }
 
-void Buffer::SetBuf(const char *_buf) {
+void Buffer::SetBuf(const char *buf) {
   buf_.clear();
-  buf_.append(_buf);
+  buf_.append(buf);
 }

@@ -1,6 +1,7 @@
 #pragma once
-#include <string>
 #include "Macros.h"
+
+#include <string>
 
 class Buffer {
  public:

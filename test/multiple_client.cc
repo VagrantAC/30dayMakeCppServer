@@ -1,52 +1,30 @@
-#include <cstring>
 #include <unistd.h>
+#include <cstring>
+
+#include <functional>
 #include <iostream>
-#include <string>
-#include "Buffer.h"
+
+#include "Connection.h"
 #include "Socket.h"
 #include "ThreadPool.h"
-#include "util.h"
 
 void OneClient(int msgs, int wait) {
-  Socket *socket = new Socket();
-  InetAddress *addr = new InetAddress("127.0.0.1", 9801);
-  socket->Connect(addr);
-
-  int socketfd = socket->GetFd();
-
-  Buffer *sendBuffer = new Buffer();
-  Buffer *readBuffer = new Buffer();
-
+  Socket *sock = new Socket();
+  sock->Connect("127.0.0.1", 9801);
+  Connection *conn = new Connection(nullptr, sock);
   sleep(wait);
   int count = 0;
   while (count < msgs) {
-    sendBuffer->SetBuf("I'm client!");
-    ssize_t write_bytes = write(socketfd, sendBuffer->ToStr(), sendBuffer->Size());
-    if (write_bytes == -1) {
-      printf("socket already disconnected, can't write any more!\n");
+    conn->SetSendBuffer("I'm client!");
+    conn->Write();
+    if (conn->GetState() == Connection::State::Closed) {
+      conn->Close();
       break;
     }
-    int already_read = 0;
-    char buf[1024];
-    while (true) {
-      bzero(&buf, sizeof(buf));
-      ssize_t read_bytes = read(socketfd, buf, sizeof(buf));
-      if (read_bytes > 0) {
-        readBuffer->Append(buf, read_bytes);
-        already_read += read_bytes;
-      } else if (read_bytes == 0) {
-        printf("server disconnected!\n");
-        exit(EXIT_SUCCESS);
-      }
-      if (already_read >= sendBuffer->Size()) {
-        printf("count: %d, message from server: %s\n", count++, readBuffer->ToStr());
-        break;
-      }
-    }
-    readBuffer->Clear();
+    conn->Read();
+    std::cout << "msg count " << count++ << ": " << conn->ReadBuffer() << std::endl;
   }
-  delete addr;
-  delete socket;
+  delete conn;
 }
 
 int main(int argc, char *argv[]) {

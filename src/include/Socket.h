@@ -1,6 +1,7 @@
 #pragma once
-#include <arpa/inet.h>
 #include "Macros.h"
+
+#include <arpa/inet.h>
 
 class InetAddress {
  public:
@@ -35,7 +36,9 @@ class Socket {
   int Accept(InetAddress *addr);
 
   void Connect(InetAddress *addr);
+  void Connect(const char *ip, uint16_t port);
 
-  void Setnonblocking();
+  void SetNonblocking();
+  bool IsNonBlocking();
   int GetFd();
 };
