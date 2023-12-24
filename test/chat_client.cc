@@ -7,17 +7,17 @@ int main() {
   sock->Connect("127.0.0.1", 9801);
 
   Connection *conn = new Connection(nullptr, sock);
-
-  while (true) {
-    conn->GetlineSendBuffer();
-    conn->Write();
-    if (conn->GetState() == Connection::State::Closed) {
-      conn->Close();
-      break;
-    }
+  while(true){
     conn->Read();
     std::cout << "Message from server: " << conn->ReadBuffer() << std::endl;
   }
+  // conn->Read();
+
+//  if (conn->GetState() == Connection::State::Connected) {
+  //  std::cout << conn->ReadBuffer() << std::endl;
+  //}
+  //conn->SetSendBuffer("Hello server!");
+  //conn->Write();
 
   delete conn;
   return 0;

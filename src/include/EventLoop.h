@@ -3,7 +3,7 @@
 
 #include <functional>
 
-class Epoll;
+class Poller;
 class Channel;
 class EventLoop {
  public:
@@ -14,8 +14,10 @@ class EventLoop {
 
   void Loop();
   void UpdateChannel(Channel *ch);
+  void DeleteChannel(Channel *ch);
+  void Quit();
 
  private:
-  Epoll *epoll_{nullptr};
+  Poller *poller_{nullptr};
   bool quit_{false};
 };

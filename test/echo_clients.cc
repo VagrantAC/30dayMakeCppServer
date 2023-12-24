@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   int threads = 100;
   int msgs = 100;
   int wait = 0;
-  int o;
+  int o = -1;
   const char *optstring = "t:m:w:";
   while ((o = getopt(argc, argv, optstring)) != -1) {
     switch (o) {
@@ -47,6 +47,8 @@ int main(int argc, char *argv[]) {
       case '?':
         printf("error optopt: %c\n", optopt);
         printf("error opterr: %d\n", opterr);
+        break;
+      default:
         break;
     }
   }

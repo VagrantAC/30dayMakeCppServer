@@ -1,7 +1,7 @@
 #include "include/ThreadPool.h"
 
 ThreadPool::ThreadPool(unsigned int size) {
-  for (int i = 0; i < int(size); ++i) {
+  for (unsigned int i = 0; i < size; ++i) {
     workers_.emplace_back(std::thread([this]() {
       while (true) {
         std::function<void()> task;

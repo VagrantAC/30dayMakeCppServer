@@ -23,9 +23,13 @@ class Connection {
 
   void Read();
   void Write();
+  void Send(const std::string& msg);
 
   void SetDeleteConnectionCallback(std::function<void(Socket *)> const &callback);
   void SetOnConnectCallback(std::function<void(Connection *)> const &callback);
+  void SetOnMessageCallback(std::function<void(Connection *)> const &callback);
+  void Business();
+
   State GetState();
   void Close();
   void SetSendBuffer(const char *str);
@@ -37,6 +41,7 @@ class Connection {
   Socket *GetSocket();
 
   void OnConnect(std::function<void()> fn);
+  void OnMessage(std::function<void()> fn);
 
  private:
   EventLoop *loop_;
@@ -48,6 +53,7 @@ class Connection {
   std::function<void(Socket *)> delete_connection_callback_;
 
   std::function<void(Connection *)> on_connect_callback_;
+  std::function<void(Connection *)> on_message_callback_;
 
   void ReadNonBlocking();
   void WriteNonBlocking();

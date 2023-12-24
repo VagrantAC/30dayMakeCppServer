@@ -1,19 +1,22 @@
 #pragma once
-#include "Macros.h"
-
 #include <vector>
+#include "Macros.h"
 
 #ifdef OS_LINUX
 #include <sys/epoll.h>
 #endif
 
-class Channel;
-class Epoll {
- public:
-  Epoll();
-  ~Epoll();
+#ifdef OS_MACOS
+#include <sys/event.h>
+#endif
 
-  DISALLOW_COPY_AND_MOVE(Epoll);
+class Channel;
+class Poller {
+ public:
+  Poller();
+  ~Poller();
+
+  DISALLOW_COPY_AND_MOVE(Poller);
 
   void UpdateChannel(Channel *ch);
   void DeleteChannel(Channel *ch);
@@ -21,6 +24,12 @@ class Epoll {
   std::vector<Channel *> Poll(int timeout = -1);
 
  private:
-  int epfd_{1};
+  int fd_{1};
+#ifdef OS_LINUX
   struct epoll_event *events_{nullptr};
+#endif
+
+#ifdef OS_MACOS
+  struct kevent *events_{nullptr};
+#endif
 };

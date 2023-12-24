@@ -17,7 +17,6 @@ Socket::Socket(int fd) : fd_(fd) { ErrorIf(fd_ == -1, "socket create error"); }
 Socket::~Socket() {
   if (fd_ != -1) {
     close(fd_);
-    fd_ = -1;
   }
 }
 
@@ -31,6 +30,30 @@ void Socket::Listen() { ErrorIf(listen(fd_, SOMAXCONN) == -1, "socket listen err
 void Socket::SetNonblocking() { fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK); }
 
 bool Socket::IsNonBlocking() { return (fcntl(fd_, F_GETFL) & O_NONBLOCK) != 0; }
+
+int Socket::Accept(InetAddress *addr) {
+  int clnt_sockfd = -1;
+  struct sockaddr_in tmp_addr {};
+  socklen_t addr_len = sizeof(tmp_addr);
+  if (IsNonBlocking()) {
+    while (true) {
+      clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
+      if (clnt_sockfd == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+        continue;
+      }
+      if (clnt_sockfd == -1) {
+        ErrorIf(true, "socket accept error");
+      } else {
+        break;
+      }
+    }
+  } else {
+    clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
+    ErrorIf(clnt_sockfd == -1, "socket accept error");
+  }
+  addr->SetAddr(tmp_addr);
+  return clnt_sockfd;
+}
 
 void Socket::Connect(InetAddress *addr) {
   struct sockaddr_in tmp_addr = addr->GetAddr();
@@ -56,30 +79,6 @@ void Socket::Connect(const char *ip, uint16_t port) {
   InetAddress *addr = new InetAddress(ip, port);
   Connect(addr);
   delete addr;
-}
-
-int Socket::Accept(InetAddress *addr) {
-  int clnt_sockfd = -1;
-  struct sockaddr_in tmp_addr {};
-  socklen_t addr_len = sizeof(tmp_addr);
-  if (IsNonBlocking()) {
-    while (true) {
-      clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
-      if (clnt_sockfd == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-        continue;
-      }
-      if (clnt_sockfd == -1) {
-        ErrorIf(true, "socket accept error");
-      } else {
-        break;
-      }
-    }
-  } else {
-    clnt_sockfd = accept(fd_, (sockaddr *)&tmp_addr, &addr_len);
-    ErrorIf(clnt_sockfd == -1, "socket accept error");
-  }
-  addr->SetAddr(tmp_addr);
-  return clnt_sockfd;
 }
 
 int Socket::GetFd() { return fd_; }

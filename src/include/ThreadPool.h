@@ -24,7 +24,7 @@ class ThreadPool {
   std::queue<std::function<void()>> tasks_;
   std::mutex queue_mutex_;
   std::condition_variable condition_variable_;
-  bool stop_{false};
+  std::atomic<bool> stop_{false};
 };
 
 template <class F, class... Args>

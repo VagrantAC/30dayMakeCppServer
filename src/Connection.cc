@@ -11,7 +11,7 @@
 
 Connection::Connection(EventLoop *loop, Socket *sock) : loop_(loop), sock_(sock) {
   if (loop_ != nullptr) {
-    channel_ = new Channel(loop_, sock_->GetFd());
+    channel_ = new Channel(loop_, sock);
     channel_->EnableRead();
     channel_->UseET();
   }
@@ -124,6 +124,17 @@ void Connection::WriteBlocking() {
     state_ = State::Closed;
   }
 }
+
+void Connection::Send(const std::string &msg) {
+  SetSendBuffer(msg.c_str());
+  Write();
+}
+
+void Connection::Business() {
+  Read();
+  on_message_callback_(this);
+}
+
 void Connection::Close() { delete_connection_callback_(sock_); }
 
 Connection::State Connection::GetState() { return state_; }
@@ -138,7 +149,12 @@ void Connection::SetDeleteConnectionCallback(std::function<void(Socket *)> const
 }
 void Connection::SetOnConnectCallback(std::function<void(Connection *)> const &callback) {
   on_connect_callback_ = callback;
-  channel_->SetReadCallback([this]() { on_connect_callback_(this); });
+}
+
+void Connection::SetOnMessageCallback(const std::function<void(Connection *)> &callback) {
+  on_message_callback_ = callback;
+  std::function<void()> bus = std::bind(&Connection::Business, this);
+  channel_->SetReadCallback(bus);
 }
 
 void Connection::GetlineSendBuffer() { send_buffer_->Getline(); }
